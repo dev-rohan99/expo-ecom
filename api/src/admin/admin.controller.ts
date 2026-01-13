@@ -8,7 +8,7 @@ export class AdminController {
   @Get('dashboard')
   getDashboard() {
     return {
-      message: 'Welcome Admin!',
+      message: 'Welcome Admin Panel!',
     };
   }
 }
