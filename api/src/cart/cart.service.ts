@@ -10,9 +10,9 @@ import { AddToCartDto } from './dto/add-to-cart.dto';
 export class CartService {
   constructor(private prisma: PrismaService) {}
 
-  async findCart(id: string) {
+  async findCart(userId: string) {
     return this.prisma.cart.findUnique({
-      where: { id },
+      where: { userId },
       include: {
         cartItems: {
           include: {
