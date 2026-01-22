@@ -11,7 +11,16 @@ export class CartService {
   constructor(private prisma: PrismaService) {}
 
   async findCart(id: string) {
-    return this.prisma.cart.findMany({ where: { id } });
+    return this.prisma.cart.findUnique({
+      where: { id },
+      include: {
+        cartItems: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
   }
 
   async addToCart(userId: string, dto: AddToCartDto) {
@@ -21,10 +30,6 @@ export class CartService {
 
     if (!product || !product.isActive) {
       throw new NotFoundException('Product not found!');
-    }
-
-    if (product.stock < dto.quantity) {
-      throw new BadRequestException('Insufficient stock!');
     }
 
     const cart = await this.getOrCreateCart(userId);
@@ -37,6 +42,13 @@ export class CartService {
         },
       },
     });
+
+    const totalQuantity = existingItem
+      ? existingItem.quantity + dto.quantity
+      : dto.quantity;
+    if (product.stock < totalQuantity) {
+      throw new BadRequestException('Insufficient stock!');
+    }
 
     if (existingItem) {
       return this.prisma.cartItem.update({

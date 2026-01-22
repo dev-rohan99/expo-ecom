@@ -70,4 +70,5 @@ model CartItem {
   createdAt DateTime @default(now())
 
   @@unique([cartId, productId])
+  @@index([cartId])
 }
