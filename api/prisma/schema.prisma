@@ -84,7 +84,8 @@ model Order {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  items OrderItem[]
+  items    OrderItem[]
+  payments Payment[]
 
   @@index([userId])
 }
@@ -109,4 +110,35 @@ enum OrderStatus {
   SHIPPED
   CANCELLED
   COMPLETED
+}
+
+model Payment {
+  id String @id @default(cuid())
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  provider    PaymentProvider
+  providerRef String          @unique
+
+  amount   Float
+  currency String
+  status   PaymentStatus
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+}
+
+enum PaymentProvider {
+  STRIPE
+  SSLCOMMERZ
+}
+
+enum PaymentStatus {
+  INITIATED
+  PAID
+  FAILED
+  CANCELLED
 }
