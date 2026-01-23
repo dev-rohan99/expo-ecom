@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { OrderStatus } from '@prisma/client';
 import { PrismaService } from 'prisma/prisma.service';
 
 @Injectable()
@@ -83,5 +84,36 @@ export class OrdersService {
         },
       },
     });
+  }
+
+  async getAllOrders() {
+    return this.prisma.order.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: { user: true, items: { include: { product: true } } },
+    });
+  }
+
+  async getOrderById(id: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: {
+        user: true,
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found!');
+    }
+
+    return order;
+  }
+
+  async updateOrderStatus(id: string, status: OrderStatus) {
+    return this.prisma.order.update({ where: { id }, data: { status } });
   }
 }
