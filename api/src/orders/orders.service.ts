@@ -70,4 +70,18 @@ export class OrdersService {
       }
     });
   }
+
+  async getMyOrders(userId: string) {
+    return this.prisma.order.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+  }
 }
