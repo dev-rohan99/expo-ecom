@@ -132,13 +132,14 @@ model Payment {
 }
 
 enum PaymentProvider {
+  MOCK
   STRIPE
   SSLCOMMERZ
 }
 
 enum PaymentStatus {
   INITIATED
-  PAID
+  SUCCESS
   FAILED
   CANCELLED
 }

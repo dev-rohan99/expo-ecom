@@ -24,8 +24,8 @@ export class PaymentsService {
       throw new ForbiddenException('Not your Order!');
     }
 
-    if (order.status === 'PENDING') {
-      throw new BadRequestException('Order already procced!');
+    if (order.status !== 'PENDING') {
+      throw new BadRequestException('Order already processed!');
     }
 
     const payment = await this.prisma.payment.create({
@@ -47,7 +47,34 @@ export class PaymentsService {
       return this.initSSLPayment(order, payment);
     }
 
+    if (dto.provider === PaymentProvider.MOCK) {
+      return this.mockPayment(order, payment);
+    }
+
     throw new BadRequestException('Invalid payment provider!');
+  }
+
+  private async mockPayment(order, payment) {
+    await this.prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: 'SUCCESS',
+        providerRef: `MOCK_${Date.now()}`,
+      },
+    });
+
+    await this.prisma.order.update({
+      where: { id: order.id },
+      data: {
+        status: 'PAID',
+      },
+    });
+
+    return {
+      gateway: 'MOCK',
+      success: true,
+      orderId: order.id,
+    };
   }
 
   private async initStripePayment(order, payment) {
