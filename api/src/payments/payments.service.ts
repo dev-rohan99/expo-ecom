@@ -48,33 +48,14 @@ export class PaymentsService {
     }
 
     if (dto.provider === PaymentProvider.MOCK) {
-      return this.mockPayment(order, payment);
+      return {
+        gateway: 'MOCK',
+        paymentId: payment.id,
+        message: 'Mock payment initiated. Trigger callback to complete.',
+      };
     }
 
     throw new BadRequestException('Invalid payment provider!');
-  }
-
-  private async mockPayment(order, payment) {
-    await this.prisma.payment.update({
-      where: { id: payment.id },
-      data: {
-        status: 'SUCCESS',
-        providerRef: `MOCK_${Date.now()}`,
-      },
-    });
-
-    await this.prisma.order.update({
-      where: { id: order.id },
-      data: {
-        status: 'PAID',
-      },
-    });
-
-    return {
-      gateway: 'MOCK',
-      success: true,
-      orderId: order.id,
-    };
   }
 
   private async initStripePayment(order, payment) {
@@ -90,6 +71,89 @@ export class PaymentsService {
       gateway: 'SSLCOMMERZ',
       redirectUrl: 'https://sslcommerz-url',
       paymentId: payment.id,
+    };
+  }
+
+  async handleMockSuccess(paymentId: string) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: { order: true },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment not found!');
+    }
+
+    if (payment.provider !== 'MOCK') {
+      throw new BadRequestException('Invalid provider callback');
+    }
+
+    if (payment.status === 'SUCCESS') {
+      return { message: 'Payment already completed!' };
+    }
+
+    if (payment.status !== 'INITIATED') {
+      return { message: 'Payment already processed!' };
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: 'SUCCESS',
+          providerRef: `MOCK_SUCCESS_${Date.now()}`,
+        },
+      }),
+
+      this.prisma.order.update({
+        where: { id: payment.orderId },
+        data: { status: 'PAID' },
+      }),
+    ]);
+
+    return {
+      success: true,
+      orderId: payment.orderId,
+    };
+  }
+
+  async handleMockFail(paymentId: string) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment not found!');
+    }
+
+    if (payment.provider !== 'MOCK') {
+      throw new BadRequestException('Invalid provider callback');
+    }
+
+    if (payment.status !== 'INITIATED') {
+      return { message: 'Payment already processed!' };
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: 'FAILED',
+          providerRef: `MOCK_FAILED_${Date.now()}`,
+        },
+      }),
+
+      this.prisma.order.update({
+        where: { id: payment.orderId },
+        data: {
+          status: 'CANCELLED',
+        },
+      }),
+    ]);
+
+    return {
+      success: false,
+      orderId: payment.orderId,
     };
   }
 }
